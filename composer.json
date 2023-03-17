@@ -1,0 +1,22 @@
+{
+    "name": "dealroadshow/proximity",
+    "description": "Library that allows to create PHP proxy objects",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Dealroadshow\\Proximity\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "petr-buchyn",
+            "email": "petr.buchyn@finsight.com"
+        }
+    ],
+    "minimum-stability": "beta",
+    "require": {
+        "php": ">=8.2",
+        "nette/php-generator": "^4.0"
+    }
+}
