@@ -10,10 +10,14 @@ class ProxyFactory
     {
     }
 
-    public function proxy(object $object, ProxyOptions $options): ProxyInterface
+    public function proxy(object $object, ProxyOptions $options = null): ProxyInterface
     {
         if ($object instanceof ProxyInterface) {
             throw new \InvalidArgumentException('$object is already a proxy');
+        }
+
+        if (null === $options) {
+            $options = new ProxyOptions([], []);
         }
 
         $class = new \ReflectionObject($object);
