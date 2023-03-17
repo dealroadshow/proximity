@@ -11,7 +11,7 @@ some of `ProxyManager`'s functionality.
 
 ## Usage
 
-You can create easily proxy instances by using `ProxyFactory` class:
+You can easily create proxy instances by using `ProxyFactory` class:
 
 ```php
 <?php
