@@ -36,6 +36,8 @@ class ProxyFactory
 
         $proxyClass = $generatedProxy->fqcn;
 
+        $this->proxyClassesCache[$class->getName()] = $proxyClass;
+
         return new $proxyClass($object, $options);
     }
 }

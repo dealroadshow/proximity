@@ -32,7 +32,7 @@ readonly class ProxyGenerator
             ->addUse(InterceptionContext::class)
             ->addUse(ProxyOptions::class);
 
-        $className = $reflectionClass->getName().'Proxy';
+        $className = $reflectionClass->getShortName().'Proxy';
         $class = new ClassType($className, $namespace);
         $namespace->add($class);
 
@@ -136,29 +136,27 @@ readonly class ProxyGenerator
             ->setType(ProxyOptions::class);
 
         $code = <<<'CODE'
-        if (null === self::$proximityReflectionClass) {
-            self::$proximityReflectionClass = new \ReflectionClass($this::class);
-        }
-        $class = self::$proximityReflectionClass;
-        
         $this->proximityOriginalObject = $object;
         $this->proximityOptions = $options;
         
-        $accessorClosure = function &(string $propName) {
-            return $this->$propName;
+        $privatePropertySetterClosure = function (string $propName) use ($object) {
+            $this->$propName = & $object->$propName;
         };
-        $readonlyAccessorClosure = function (string $propName) {
-            return $this->$propName;
+        $readonlyPropertySetterClosure = function (string $propName) use ($object) {
+            $this->$propName = $object->$propName;
         };
         CODE;
 
-        foreach ($reflectionClass->getProperties() as $property) {
+        foreach (self::allPropertiesFromClassAndParents($reflectionClass) as $property) {
             if ($property->isReadOnly()) {
                 if ($property->isPrivate()) {
                     $propertyInitializationCode = <<<'PROPERTY_CODE'
-                    $this->{PROPERTY} = $readonlyAccessorClosure->call($object, '{PROPERTY}');
+                    $readonlyPropertySetterClosure->bindTo($this, '{CLASS}')->__invoke('{PROPERTY}');
                     PROPERTY_CODE;
-                    $propertyInitializationCode = strtr($propertyInitializationCode, ['{PROPERTY}' => $property->name]);
+                    $propertyInitializationCode = strtr($propertyInitializationCode, [
+                        '{PROPERTY}' => $property->name,
+                        '{CLASS}' => $property->getDeclaringClass()->getName()
+                    ]);
                     $code = $code.PHP_EOL.$propertyInitializationCode;
 
                     continue;
@@ -171,11 +169,11 @@ readonly class ProxyGenerator
 
             if ($property->isPrivate()) {
                 $propertyInitializationCode = <<<'PROPERTY_CODE'
-                $this->{PROPERTY} = &$accessorClosure->bindTo($object, '{CLASS}')->__invoke('{PROPERTY}');
+                $privatePropertySetterClosure->bindTo($this, '{CLASS}')->__invoke('{PROPERTY}');
                 PROPERTY_CODE;
                 $propertyInitializationCode = strtr($propertyInitializationCode, [
                     '{PROPERTY}' => $property->name,
-                    '{CLASS}' => $reflectionClass->getName(),
+                    '{CLASS}' => $property->getDeclaringClass()->getName(),
                 ]);
                 $code = $code.PHP_EOL.$propertyInitializationCode;
 
@@ -190,17 +188,6 @@ readonly class ProxyGenerator
 
     private function generateProperties(\ReflectionClass $reflectionClass, ClassType $class): void
     {
-        foreach ($reflectionClass->getProperties() as $reflectionProperty) {
-            $this->generateProperty($class, $reflectionProperty);
-        }
-
-        $class
-            ->addProperty('proximityReflectionClass')
-            ->setStatic()
-            ->setPrivate()
-            ->setType(\ReflectionClass::class.'|null')
-            ->setValue(null);
-
         $class
             ->addProperty('proximityOriginalObject')
             ->setPrivate()
@@ -214,25 +201,6 @@ readonly class ProxyGenerator
             ->setReadOnly();
     }
 
-    private function generateProperty(ClassType $class, \ReflectionProperty $reflectionProperty): void
-    {
-        $property = $class
-            ->addProperty($reflectionProperty->name)
-            ->setReadOnly($reflectionProperty->isReadOnly())
-            ->setStatic($reflectionProperty->isStatic());
-        if ($reflectionProperty->hasType()) {
-            $property->setType((string)$reflectionProperty->getType());
-        }
-
-        if ($reflectionProperty->isPublic()) {
-            $property->setPublic();
-        } elseif ($reflectionProperty->isProtected()) {
-            $property->setProtected();
-        } elseif ($property->isPrivate()) {
-            $property->setPrivate();
-        }
-    }
-
     private function ensureClassCanBeProxied(\ReflectionClass $class): void
     {
         if ($class->isFinal()) {
@@ -240,11 +208,21 @@ readonly class ProxyGenerator
                 sprintf('Class "%s" cannot be proxied because it is final', $class->getName())
             );
         }
+    }
 
-        if ($class->getMethod('__construct')?->isPrivate()) {
-            throw new \InvalidArgumentException(
-                sprintf('Class "%s" cannot be proxied because it has private constructor', $class->getName())
-            );
-        }
+    /**
+     * @param \ReflectionClass $reflectionClass
+     * @return \ReflectionProperty[]
+     */
+    private static function allPropertiesFromClassAndParents(\ReflectionClass $reflectionClass): array
+    {
+        $properties = [];
+        do {
+            $instanceProps = array_filter($reflectionClass->getProperties(), fn (\ReflectionProperty $prop) => (!$prop->isStatic()) && $reflectionClass->getName() === $prop->getDeclaringClass()->getName());
+            $properties = array_merge($properties, $instanceProps);
+            $reflectionClass = $reflectionClass->getParentClass();
+        } while ($reflectionClass);
+
+        return $properties;
     }
 }
