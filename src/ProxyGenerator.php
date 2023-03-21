@@ -4,7 +4,6 @@ namespace Dealroadshow\Proximity;
 
 use Dealroadshow\Proximity\MethodsInterception\InterceptionContext;
 use Nette\PhpGenerator\ClassType;
-use Nette\PhpGenerator\PhpFile;
 use Nette\PhpGenerator\PhpNamespace;
 use Nette\PhpGenerator\Printer;
 
@@ -45,11 +44,8 @@ readonly class ProxyGenerator
         $this->generateConstructor($reflectionClass, $class);
         $this->generateMethods($reflectionClass, $class);
 
-        $file = new PhpFile();
-        $file->addNamespace($namespace);
-
         $fqcn = $namespace->getName().'\\'.$class->getName();
-        $code = $this->printer->printFile($file);
+        $code = $this->printer->printNamespace($namespace);
 
         return new GeneratedProxy($fqcn, $code, $reflectionClass);
     }
