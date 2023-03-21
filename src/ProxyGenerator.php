@@ -51,7 +51,7 @@ readonly class ProxyGenerator
         $fqcn = $namespace->getName().'\\'.$class->getName();
         $code = $this->printer->printFile($file);
 
-        return new GeneratedProxy($fqcn, $code);
+        return new GeneratedProxy($fqcn, $code, $reflectionClass);
     }
 
     private function generateMethods(\ReflectionClass $reflectionClass, ClassType $class): void
@@ -76,6 +76,7 @@ readonly class ProxyGenerator
             $method->setReturnType((string)$reflectionMethod->getReturnType());
         }
 
+        $argsNamedMapCode = ['$argsNamedMap = [];'];
         foreach ($reflectionMethod->getParameters() as $reflectionParam) {
             $param = $method
                 ->addParameter($reflectionParam->name)
@@ -90,13 +91,16 @@ readonly class ProxyGenerator
             if ($reflectionParam->isDefaultValueAvailable()) {
                 $param->setDefaultValue($reflectionParam->getDefaultValue());
             }
+
+            $argsNamedMapCode[] = strtr('$argsNamedMap[\'{PARAM}\'] = ${PARAM};', ['{PARAM}' => $reflectionParam->name]);
         }
 
         static $codeTemplate = <<<'CODE'
         $methodName = '{METHOD}';
         $args = func_get_args();
+        {ARGS_NAMED_MAP}
         foreach ($this->proximityOptions->bodyInterceptorsForMethod($methodName) as $interceptor) {
-            $result = $interceptor->beforeMethodBody($this, $this->proximityOriginalObject, $methodName, $args);
+            $result = $interceptor->beforeMethodBody($this, $this->proximityOriginalObject, $methodName, $argsNamedMap);
             if ($result->preventMethodBody) {
                 {RETURN_STATEMENT_BEFORE_BODY}
             }
@@ -106,7 +110,7 @@ readonly class ProxyGenerator
         
         $context = new InterceptionContext($returnValue);
         foreach ($this->proximityOptions->resultInterceptorsForMethod($methodName) as $interceptor) {
-            $interceptor->afterMethodBody($this, $this->proximityOriginalObject, $methodName, $args, $context);
+            $interceptor->afterMethodBody($this, $this->proximityOriginalObject, $methodName, $argsNamedMap, $context);
         }
         
         {RETURN_STATEMENT_AFTER_BODY}
@@ -120,6 +124,7 @@ readonly class ProxyGenerator
             '{METHOD}' => $reflectionMethod->getName(),
             '{RETURN_STATEMENT_BEFORE_BODY}' => $returnStatementBeforeBody,
             '{RETURN_STATEMENT_AFTER_BODY}' => $returnStatementAfterBody,
+            '{ARGS_NAMED_MAP}' => implode(PHP_EOL, $argsNamedMapCode),
         ]);
 
         $method->setBody($code);

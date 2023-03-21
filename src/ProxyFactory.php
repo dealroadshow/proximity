@@ -2,11 +2,13 @@
 
 namespace Dealroadshow\Proximity;
 
+use Dealroadshow\Proximity\ProxyStrategy\ProxyStrategyInterface;
+
 class ProxyFactory
 {
     private array $proxyClassesCache = [];
 
-    public function __construct(private readonly ProxyGenerator $generator, private readonly string $proxyClassesDirectory)
+    public function __construct(private readonly ProxyGenerator $generator, private ProxyStrategyInterface $proxyStrategy)
     {
     }
 
@@ -27,15 +29,9 @@ class ProxyFactory
         }
 
         $generatedProxy = $this->generator->generate($class);
-        $fileName = 'ProximityProxy'.$class->getName().bin2hex(random_bytes(3)).'.php';
-        $fullPath = $this->proxyClassesDirectory.'/'.$fileName;
-
-        file_put_contents($fullPath, $generatedProxy->code);
-
-        require($fullPath);
+        $this->proxyStrategy->applyProxy($generatedProxy);
 
         $proxyClass = $generatedProxy->fqcn;
-
         $this->proxyClassesCache[$class->getName()] = $proxyClass;
 
         return new $proxyClass($object, $options);
