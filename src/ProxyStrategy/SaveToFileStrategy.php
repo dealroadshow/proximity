@@ -10,7 +10,7 @@ readonly class SaveToFileStrategy implements ProxyStrategyInterface
     {
     }
 
-    public function applyProxy(GeneratedProxy $proxy): void
+    public function apply(GeneratedProxy $proxy): void
     {
         $relativePath = str_replace('\\', '/', $proxy->originalClass->getNamespaceName());
         $dir = $this->proxyClassesDirectory.'/'.$relativePath;

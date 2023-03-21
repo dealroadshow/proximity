@@ -29,7 +29,7 @@ class ProxyFactory
         }
 
         $generatedProxy = $this->generator->generate($class);
-        $this->proxyStrategy->applyProxy($generatedProxy);
+        $this->proxyStrategy->apply($generatedProxy);
 
         $proxyClass = $generatedProxy->fqcn;
         $this->proxyClassesCache[$class->getName()] = $proxyClass;

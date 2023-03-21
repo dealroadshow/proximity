@@ -5,5 +5,5 @@ use Dealroadshow\Proximity\GeneratedProxy;
 
 interface ProxyStrategyInterface
 {
-    public function applyProxy(GeneratedProxy $proxy): void;
+    public function apply(GeneratedProxy $proxy): void;
 }

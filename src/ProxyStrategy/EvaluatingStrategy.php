@@ -6,8 +6,8 @@ use Dealroadshow\Proximity\GeneratedProxy;
 
 class EvaluatingStrategy implements ProxyStrategyInterface
 {
-    public function applyProxy(GeneratedProxy $proxy): void
+    public function apply(GeneratedProxy $proxy): void
     {
-        eval ($proxy->code);
+        eval($proxy->code);
     }
 }
