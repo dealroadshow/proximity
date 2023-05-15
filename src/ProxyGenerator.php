@@ -97,7 +97,7 @@ readonly class ProxyGenerator
         {ARGS_NAMED_MAP}
         foreach ($this->proximityOptions->bodyInterceptorsForMethod($methodName) as $interceptor) {
             $result = $interceptor->beforeMethodBody($this, $this->proximityOriginalObject, $methodName, $argsNamedMap);
-            if ($result->preventMethodBody) {
+            if ($result?->preventMethodBody) {
                 {RETURN_STATEMENT_BEFORE_BODY}
             }
         }
