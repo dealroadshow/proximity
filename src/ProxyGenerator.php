@@ -150,20 +150,14 @@ readonly class ProxyGenerator
 
         foreach (self::allPropertiesFromClassAndParents($reflectionClass) as $property) {
             if ($property->isReadOnly()) {
-                if ($property->isPrivate()) {
-                    $propertyInitializationCode = <<<'PROPERTY_CODE'
+                $propertyInitializationCode = <<<'PROPERTY_CODE'
                     $readonlyPropertySetterClosure->bindTo($this, '{CLASS}')->__invoke('{PROPERTY}');
-                    PROPERTY_CODE;
-                    $propertyInitializationCode = strtr($propertyInitializationCode, [
-                        '{PROPERTY}' => $property->name,
-                        '{CLASS}' => $property->getDeclaringClass()->getName()
-                    ]);
-                    $code = $code.PHP_EOL.$propertyInitializationCode;
-
-                    continue;
-                }
-
-                $code = $code.PHP_EOL.strtr('$this->{PROPERTY} = $object->{PROPERTY};', ['{PROPERTY}' => $property->name]);
+                PROPERTY_CODE;
+                $propertyInitializationCode = strtr($propertyInitializationCode, [
+                    '{PROPERTY}' => $property->name,
+                    '{CLASS}' => $property->getDeclaringClass()->getName()
+                ]);
+                $code = $code.PHP_EOL.$propertyInitializationCode;
 
                 continue;
             }
